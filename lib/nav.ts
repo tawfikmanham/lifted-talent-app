@@ -24,17 +24,7 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { label: "Find new talent", href: "/candidates/all", icon: HomeIcon },
   { label: "Interviews", href: "/interviews", icon: CalendarIcon },
-  {
-    label: "Team",
-    href: "/team",
-    icon: UsersIcon,
-    expandable: true,
-    disabled: true,
-    children: [
-      { label: "Team members", href: "/team/members" },
-      { label: "Onboarding", href: "/team/onboarding" },
-    ],
-  },
+  { label: "Team", href: "/team", icon: UsersIcon },
   { label: "Compliance", href: "/compliance/alerts", icon: ComplianceIcon },
   { label: "Settings", href: "/settings", icon: GearIcon },
   {

@@ -4,43 +4,37 @@ import {
   User,
   Building2,
   Home,
-  Home as HomeIn,
   CreditCard,
   Car,
   Clock,
   Video,
   Heart,
   AudioLines,
+  type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
 import type { Candidate } from "@/lib/mock";
 
-function TraitPresent({
+function Trait({
   Icon,
   label,
+  absent,
 }: {
-  Icon: typeof User;
+  Icon: LucideIcon;
   label: string;
+  absent?: boolean;
 }) {
   return (
-    <span className="flex items-center gap-1.5 text-brand-primary">
-      <Icon className="h-4 w-4" strokeWidth={1.8} />
-      <span className="text-sm text-brand-ink">{label}</span>
-    </span>
-  );
-}
-
-function TraitAbsent({
-  Icon,
-  label,
-}: {
-  Icon: typeof User;
-  label: string;
-}) {
-  return (
-    <span className="flex items-center gap-1.5 text-muted line-through">
-      <Icon className="h-4 w-4" strokeWidth={1.8} />
-      <span className="text-sm">{label}</span>
+    <span
+      className={`mr-4 inline-flex items-center gap-2 text-xs ${
+        absent ? "text-gray-400 line-through" : ""
+      }`}
+    >
+      <Icon
+        className={`size-4 ${absent ? "text-gray-400" : "text-primary-600"}`}
+        strokeWidth={2}
+      />
+      <span className="whitespace-nowrap">{label}</span>
     </span>
   );
 }
@@ -50,81 +44,72 @@ export function CandidateCard({ candidate }: { candidate: Candidate }) {
   const c = candidate;
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-border-subtle">
-      <div className="p-5">
-        <h3 className="text-lg font-semibold text-brand-ink">{c.name}</h3>
-        <div className="mt-3 flex gap-4">
-          <div
-            className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full text-lg font-semibold text-brand-ink/70"
-            style={{ backgroundColor: c.avatarColor }}
-            aria-hidden
-          >
-            {c.avatarInitials}
-          </div>
-          <div className="grid flex-1 grid-cols-1 gap-x-4 gap-y-2 md:grid-cols-2">
-            <TraitPresent Icon={User} label={c.gender} />
-            {c.care.residential ? (
-              <TraitPresent Icon={Building2} label="Residential care" />
-            ) : (
-              <TraitAbsent Icon={Building2} label="Residential care" />
-            )}
-            {c.care.home ? (
-              <TraitPresent Icon={Home} label="Home care" />
-            ) : (
-              <TraitAbsent Icon={Home} label="Home care" />
-            )}
-            {c.care.liveIn ? (
-              <TraitPresent Icon={HomeIn} label="Live in care" />
-            ) : (
-              <TraitAbsent Icon={HomeIn} label="Live in care" />
-            )}
-            {c.driver ? (
-              <TraitPresent Icon={CreditCard} label="Driver" />
-            ) : (
-              <TraitAbsent Icon={CreditCard} label="Driver" />
-            )}
-            {c.owner ? (
-              <TraitPresent Icon={Car} label="Owner" />
-            ) : (
-              <TraitAbsent Icon={Car} label="Owner" />
-            )}
-            {c.fullTime ? (
-              <TraitPresent Icon={Clock} label="Full time" />
-            ) : (
-              <TraitAbsent Icon={Clock} label="Full time" />
-            )}
-          </div>
+    <article className="relative flex h-full flex-col rounded-xl border border-gray-300 bg-primary-400/5">
+      <header className="flex items-center gap-2 p-5">
+        <div className="overflow-hidden">
+          <span className="block w-full truncate font-medium text-brand-ink">
+            {c.name}
+          </span>
         </div>
+      </header>
+
+      <div className="flex grow items-center gap-4 px-5 pb-5">
+        <div
+          className="flex aspect-square !size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary-50 bg-white text-lg font-semibold text-brand-ink/70 md:!size-20 lg:!size-24"
+          style={{ backgroundColor: c.avatarColor }}
+          aria-hidden
+        >
+          {c.avatarInitials}
+        </div>
+        <section className="grow space-y-4">
+          <div className="flex flex-wrap justify-start gap-y-4">
+            <Trait Icon={User} label={c.gender} />
+            <Trait
+              Icon={Building2}
+              label="Residential care"
+              absent={!c.care.residential}
+            />
+            <Trait Icon={Home} label="Home care" absent={!c.care.home} />
+            <Trait Icon={Home} label="Live in care" absent={!c.care.liveIn} />
+            <Trait Icon={CreditCard} label="Driver" absent={!c.driver} />
+            <Trait Icon={Car} label="Owner" absent={!c.owner} />
+            <Trait Icon={Clock} label="Full time" absent={!c.fullTime} />
+          </div>
+        </section>
       </div>
 
-      <div className="flex items-center justify-between border-t border-border-subtle px-5 py-3">
-        <div className="flex items-center gap-2 text-brand-primary">
+      <footer className="grid grow-0 grid-cols-[1fr_min-content_1fr] items-center justify-between gap-4 border-t border-gray-300 p-5 text-primary-700">
+        <div className="flex gap-2">
           {c.hasVideo && (
             <button aria-label="Video" className="hover:opacity-80">
-              <Video className="h-5 w-5" strokeWidth={1.8} />
+              <Video className="size-5" strokeWidth={2} />
             </button>
           )}
           {c.hasAudio && (
             <button aria-label="Audio" className="hover:opacity-80">
-              <AudioLines className="h-5 w-5" strokeWidth={1.8} />
+              <AudioLines className="size-5" strokeWidth={2} />
             </button>
           )}
         </div>
-        <button className="text-sm font-medium text-brand-primary hover:underline">
-          Full Profile
-        </button>
-        <button
-          onClick={() => setFav((v) => !v)}
-          aria-label={fav ? "Unfavourite" : "Favourite"}
-          className="text-brand-primary"
+        <a
+          href="#"
+          className="grow whitespace-nowrap text-sm font-medium hover:underline"
         >
-          <Heart
-            className="h-5 w-5"
-            strokeWidth={1.8}
-            fill={fav ? "currentColor" : "none"}
-          />
-        </button>
-      </div>
+          Full Profile
+        </a>
+        <div className="text-right">
+          <button
+            onClick={() => setFav((v) => !v)}
+            aria-label={fav ? "Unfavourite" : "Favourite"}
+          >
+            <Heart
+              className="size-5"
+              strokeWidth={2}
+              fill={fav ? "currentColor" : "none"}
+            />
+          </button>
+        </div>
+      </footer>
     </article>
   );
 }

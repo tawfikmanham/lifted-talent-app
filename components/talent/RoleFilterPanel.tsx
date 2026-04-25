@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, Search } from "lucide-react";
+import { Info, Search, Pencil } from "lucide-react";
 import { useState } from "react";
 import { TOTAL_MATCHES } from "@/lib/mock";
 
@@ -16,109 +16,118 @@ const ROWS = [
   { label: "Minimum experience (years)", value: "Not set" },
 ];
 
+const TOGGLE_BASE =
+  "w-full border border-gray-300 px-3 py-2 text-sm transition-colors duration-300 first:rounded-l-md last:rounded-r-md";
+
 export function RoleFilterPanel() {
   const [relocators, setRelocators] = useState<"yes" | "no">("yes");
-  const [expanded, setExpanded] = useState(false);
 
   return (
-    <aside className="flex flex-col gap-4 bg-white p-4 lg:w-[360px] lg:shrink-0 lg:border-l lg:border-border-subtle">
-      <div>
-        <label className="mb-1 block text-xs text-muted">Search by name</label>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+    <section className="w-full space-y-6 rounded-2xl border border-gray-300 bg-white p-4">
+      <label className="block text-xs text-gray-500">
+        <span className="mb-1 block">Search by name</span>
+        <div className="flex min-h-10 items-center gap-2 rounded-lg border border-gray-300 bg-white p-2 text-sm text-brand-ink hover:bg-primary-50 focus-within:border-primary-300">
+          <Search className="size-5 shrink-0 text-gray-400" />
           <input
-            type="search"
-            placeholder=""
-            className="w-full rounded-md border border-border-subtle bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-primary"
+            type="text"
+            className="w-full grow bg-transparent outline-none"
           />
         </div>
-      </div>
+      </label>
 
-      <div>
-        <div className="mb-1 flex items-center gap-1">
-          <span className="text-xs text-muted">Show relocators</span>
-          <Info className="h-3.5 w-3.5 text-brand-primary" />
-        </div>
-        <div className="grid grid-cols-2 gap-0 overflow-hidden rounded-md border border-border-subtle">
+      <div className="block text-xs text-gray-500">
+        <span className="mb-1 flex items-center gap-1">
+          Show relocators
+          <Info className="size-4 text-blue-500" />
+        </span>
+        <div className="flex w-full">
           <button
             type="button"
             onClick={() => setRelocators("yes")}
-            className={`py-2 text-sm font-medium transition ${relocators === "yes" ? "bg-brand-primary text-white" : "bg-white text-brand-ink"}`}
+            className={`${TOGGLE_BASE} ${
+              relocators === "yes"
+                ? "border-primary-600 bg-primary-600 text-white"
+                : "border-l-transparent bg-white text-brand-ink hover:bg-gray-100"
+            }`}
           >
             Yes
           </button>
           <button
             type="button"
             onClick={() => setRelocators("no")}
-            className={`py-2 text-sm font-medium transition ${relocators === "no" ? "bg-brand-primary text-white" : "bg-white text-brand-ink"}`}
+            className={`${TOGGLE_BASE} ${
+              relocators === "no"
+                ? "border-primary-600 bg-primary-600 text-white"
+                : "border-l-transparent bg-white text-brand-ink hover:bg-gray-100"
+            }`}
           >
             No
           </button>
         </div>
-        <a
-          href="#"
-          className="mt-2 block text-xs font-medium text-brand-primary hover:underline"
-        >
-          Read about the support we offer for relocating candidates here
-        </a>
-      </div>
-
-      <div>
-        <div className="mb-1 text-xs text-muted">Filter by role requirements</div>
         <button
           type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="w-full rounded-md bg-brand-primary py-2.5 text-center text-sm font-medium text-white hover:bg-brand-primary-hover"
+          className="mt-2 block text-left text-xs font-medium text-primary-700 hover:text-primary-900 hover:underline hover:underline-offset-4"
         >
-          Default ({TOTAL_MATCHES.toLocaleString()} matches)
+          Read about the support we offer for relocating candidates here
         </button>
       </div>
 
-      <dl className="rounded-md border border-border-subtle p-4">
-        {ROWS.map((r, i) => (
-          <div key={r.label} className={i > 0 ? "mt-3" : ""}>
-            <dt className="text-xs text-muted">{r.label}</dt>
-            <dd className="text-sm text-brand-ink">{r.value}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <button
-        type="button"
-        className="rounded-md border border-border-subtle bg-white py-2.5 text-sm font-medium text-brand-ink hover:bg-page"
-      >
-        <span className="inline-flex items-center gap-2">
-          <svg
-            className="h-4 w-4"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            aria-hidden
+      <div>
+        <p className="mb-1 text-xs text-gray-500">Filter by role requirements</p>
+        <div className="grid grid-cols-1 gap-2 pb-2">
+          <button
+            type="button"
+            className="flex items-center justify-center gap-1 rounded-lg bg-primary-600 px-3 py-2 text-sm text-white shadow-sm transition-colors duration-300 hover:bg-primary-900"
           >
-            <path d="M13.586 3.586a2 2 0 1 1 2.828 2.828l-8.5 8.5a2 2 0 0 1-.879.506l-3 1a.5.5 0 0 1-.633-.633l1-3a2 2 0 0 1 .506-.879l8.5-8.5z" />
-          </svg>
-          Edit role
-        </span>
-      </button>
+            Default
+            <span className="text-xs text-white/80">
+              ({TOTAL_MATCHES.toLocaleString()} matches)
+            </span>
+          </button>
 
-      <button
-        type="button"
-        className="text-sm font-medium text-brand-primary hover:underline"
-      >
-        Show all candidates
-      </button>
-
-      <div className="rounded-md bg-alert-pink p-3 text-sm">
-        <p className="font-semibold text-brand-ink">
-          Not seeing the right candidates?
-        </p>
-        <p className="mt-1 text-brand-ink">
-          Add a new role, or update your existing roles, to refresh your
-          dashboard{" "}
-          <a href="#" className="underline">
-            here.
-          </a>
-        </p>
+          <div className="grid grid-cols-1 gap-y-4 rounded-lg border border-gray-300 bg-white p-4 text-sm">
+            {ROWS.map((r) => (
+              <div key={r.label}>
+                <span className="text-xs text-gray-500">{r.label}</span>
+                <p className="text-brand-ink">{r.value}</p>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-brand-ink shadow-sm transition-colors duration-300 hover:bg-gray-100"
+            >
+              <Pencil className="size-4" />
+              Edit role
+            </button>
+          </div>
+        </div>
       </div>
-    </aside>
+
+      <div className="flex justify-center">
+        <button
+          type="button"
+          className="px-3 py-2 text-sm font-medium text-primary-700 hover:text-primary-900 hover:underline hover:underline-offset-4"
+        >
+          Show all candidates
+        </button>
+      </div>
+
+      <section className="flex items-start gap-3 rounded-lg bg-lifted-pink-400 p-4 text-sm shadow-sm">
+        <Info className="hidden size-8 shrink-0 md:block" />
+        <div className="grow space-y-1">
+          <h2 className="font-medium">Not seeing the right candidates?</h2>
+          <p>
+            Add a new role, or update your existing roles, to refresh your
+            dashboard{" "}
+            <a
+              href="#"
+              className="underline decoration-primary-700 decoration-2 underline-offset-4 hover:font-medium hover:text-primary-700"
+            >
+              here.
+            </a>
+          </p>
+        </div>
+      </section>
+    </section>
   );
 }

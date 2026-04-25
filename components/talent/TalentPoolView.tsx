@@ -21,8 +21,14 @@ const TABS = [
   { id: "all", label: "All" },
 ];
 
+const TOTAL_PAGES = 17;
+
 export function TalentPoolView() {
   const [active, setActive] = useState("review");
+  const [page, setPage] = useState(1);
+
+  const canPrev = page > 1;
+  const canNext = page < TOTAL_PAGES;
 
   return (
     <div>
@@ -40,15 +46,49 @@ export function TalentPoolView() {
 
       <TabNav tabs={TABS} active={active} onChange={setActive} />
 
-      <div className="flex flex-col lg:flex-row">
-        <div className="min-w-0 flex-1 p-4 md:p-6">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {CANDIDATES.map((c) => (
-              <CandidateCard key={c.id} candidate={c} />
-            ))}
+      <div className="bg-gray-200 p-4 md:px-12 md:py-6">
+        <div className="flex flex-wrap-reverse gap-4 md:flex-nowrap">
+          <div className="min-w-0 flex-1">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4">
+              {CANDIDATES.map((c) => (
+                <CandidateCard key={c.id} candidate={c} />
+              ))}
+            </div>
+
+            <div className="mt-6 flex items-center justify-center gap-3 text-sm">
+              <button
+                type="button"
+                onClick={() => canPrev && setPage((p) => p - 1)}
+                disabled={!canPrev}
+                className={`rounded-lg border px-3 py-2 shadow-sm transition-colors ${
+                  canPrev
+                    ? "border-gray-300 bg-white text-brand-ink hover:bg-gray-200"
+                    : "cursor-not-allowed border-gray-300 bg-gray-100 text-gray-400"
+                }`}
+              >
+                Previous
+              </button>
+              <span className="text-brand-ink">
+                Page {page} of {TOTAL_PAGES}
+              </span>
+              <button
+                type="button"
+                onClick={() => canNext && setPage((p) => p + 1)}
+                disabled={!canNext}
+                className={`rounded-lg border px-3 py-2 shadow-sm transition-colors ${
+                  canNext
+                    ? "border-gray-300 bg-white text-brand-ink hover:bg-gray-200"
+                    : "cursor-not-allowed border-gray-300 bg-gray-100 text-gray-400"
+                }`}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+          <div className="w-full md:w-[340px] md:shrink-0 xl:w-[360px]">
+            <RoleFilterPanel />
           </div>
         </div>
-        <RoleFilterPanel />
       </div>
     </div>
   );
