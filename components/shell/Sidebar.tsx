@@ -31,6 +31,8 @@ export function Sidebar() {
     return pathname === href || pathname.startsWith(href + "/");
   };
 
+  const isExactActive = (href: string) => pathname === href;
+
   return (
     <div className="relative z-[100] w-[72px] shrink-0">
       <nav
@@ -68,17 +70,39 @@ export function Sidebar() {
             }
 
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-label={item.label}
-                aria-current={active ? "page" : undefined}
-                className={`${ITEM_BASE} ${ITEM_HOVER} ${active ? "bg-primary-500" : ""}`}
-              >
-                <Icon className="size-6 shrink-0" />
-                {labelEl}
-                {trailingChevron}
-              </Link>
+              <div key={item.href} className="space-y-1">
+                <Link
+                  href={item.href}
+                  aria-label={item.label}
+                  aria-current={active ? "page" : undefined}
+                  className={`${ITEM_BASE} ${ITEM_HOVER} ${active ? "bg-primary-500" : ""}`}
+                >
+                  <Icon className="size-6 shrink-0" />
+                  {labelEl}
+                  {trailingChevron}
+                </Link>
+                {item.expandable && item.children && active && (
+                  <div className="ml-9 hidden flex-col gap-1 group-hover/nav:flex">
+                    {item.children.map((child) => {
+                      const childActive = isExactActive(child.href);
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          aria-current={childActive ? "page" : undefined}
+                          className={`block whitespace-nowrap rounded-lg px-2 py-1.5 text-sm transition ${
+                            childActive
+                              ? "text-white"
+                              : "text-primary-100 hover:text-white"
+                          }`}
+                        >
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
