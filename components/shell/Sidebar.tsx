@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, RotateCcw } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/nav";
 import { StoreIcon } from "@/components/brand/LiftedIcons";
 import { useEffect, useRef, useState } from "react";
@@ -32,9 +32,11 @@ export function Sidebar() {
   };
 
   return (
-    <div className="relative w-16 shrink-0">
-      <nav className="group/nav fixed inset-y-0 left-0 z-30 flex h-screen w-16 flex-col overflow-hidden bg-primary-700 p-3 shadow-lg shadow-primary-600/30 transition-[width] duration-200 ease-out hover:w-60">
-        <div className="flex grow flex-col gap-y-2 overflow-y-auto overflow-x-hidden md:gap-y-3">
+    <div className="relative z-[100] w-[72px] shrink-0">
+      <nav
+        className="group/nav fixed inset-y-0 left-0 z-[100] flex h-screen w-[72px] flex-col overflow-hidden bg-primary-700 p-4 shadow-lg shadow-primary-600/30 transition-[width] duration-200 ease-out hover:w-60"
+      >
+        <div className="flex grow flex-col gap-y-2 overflow-y-auto overflow-x-hidden md:gap-y-6">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -81,47 +83,31 @@ export function Sidebar() {
           })}
         </div>
 
-        <div className="mt-2 flex flex-col gap-y-1 border-t border-white/10 pt-3">
-          <div className="flex items-center justify-between px-2 pb-1 opacity-0 transition-opacity duration-150 group-hover/nav:opacity-100">
-            <span className="text-[11px] uppercase tracking-wide text-white/55">
-              Selected agency
-            </span>
+        <div className="mt-8 space-y-8">
+          <div className="border-t border-primary-500 pt-4">
             <button
               type="button"
-              className="text-white/60 hover:text-white"
-              aria-label="Reset agency"
+              aria-label="Selected agency: Sample Name"
+              title="Sample Name"
+              className={`${ITEM_BASE} ${ITEM_HOVER}`}
             >
-              <RotateCcw className="h-3.5 w-3.5" />
+              <StoreIcon className="size-6 shrink-0" />
             </button>
           </div>
 
-          <button
-            type="button"
-            aria-label="Selected agency: Sample Name"
-            className={`${ITEM_BASE} ${ITEM_HOVER}`}
-          >
-            <StoreIcon className="size-6 shrink-0" />
-            <span className="whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover/nav:opacity-100">
-              Sample Name
-            </span>
-            <ChevronDown className="ml-auto size-5 shrink-0 opacity-0 transition-opacity duration-150 group-hover/nav:opacity-100" />
-          </button>
-
-          <div ref={menuRef} className="relative">
-            <button
-              type="button"
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-label="Account menu"
-              className={`${ITEM_BASE} ${ITEM_HOVER}`}
-            >
-              <span className="grid size-6 shrink-0 place-items-center rounded-md bg-white text-[10px] font-semibold text-brand-ink">
-                NI
-              </span>
-              <span className="whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover/nav:opacity-100">
-                Nex Ifa
-              </span>
-              <ChevronDown className="ml-auto size-5 shrink-0 opacity-0 transition-opacity duration-150 group-hover/nav:opacity-100" />
-            </button>
+          <div ref={menuRef} className="relative space-y-4">
+            <div className="flex w-full items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label="Account menu"
+                className="relative shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
+              >
+                <span className="flex size-10 items-center justify-center rounded-xl bg-white text-sm font-medium text-primary-700">
+                  NI
+                </span>
+              </button>
+            </div>
 
             {menuOpen && (
               <div className="absolute bottom-full left-0 right-0 z-40 mb-2 overflow-hidden rounded-md border border-border-subtle bg-white shadow-lg">

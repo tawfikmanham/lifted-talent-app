@@ -11,13 +11,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden lg:block">
+      <aside className="hidden lg:relative lg:z-[100] lg:block">
         <div className="sticky top-0">
           <Sidebar />
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col bg-page pb-14 lg:pb-0">
+      <div className="relative z-0 flex min-w-0 flex-1 flex-col bg-page pb-14 lg:pb-0">
         <main className="flex-1">{children}</main>
         <Footer />
       </div>
