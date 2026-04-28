@@ -36,7 +36,7 @@ export function Sidebar() {
   return (
     <div className="relative z-[100] w-[72px] shrink-0">
       <nav
-        className="group/nav fixed inset-y-0 left-0 z-[100] flex h-screen w-[72px] flex-col overflow-hidden bg-primary-700 p-4 shadow-lg shadow-primary-600/30 transition-[width] duration-200 ease-out hover:w-60"
+        className="group/nav fixed inset-y-0 left-0 z-[100] flex h-screen w-[72px] flex-col overflow-hidden bg-primary-700 p-4 [box-shadow:4px_0_20px_-4px_rgba(79,40,224,0.25)] transition-[width] duration-200 ease-out hover:w-60"
       >
         <div className="flex grow flex-col gap-y-2 overflow-y-auto overflow-x-hidden md:gap-y-6">
           {NAV_ITEMS.map((item) => {

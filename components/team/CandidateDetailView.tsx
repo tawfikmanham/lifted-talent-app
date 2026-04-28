@@ -1,12 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
+  ArrowUpRight,
   Bell,
   Check,
   Clock,
+  Copy,
+  FileText,
   MessageCircle,
   RefreshCw,
   Search,
@@ -15,6 +19,8 @@ import {
   progressFor,
   type ActivityEvent,
   type Check as ComplianceCheck,
+  type CheckDocument,
+  type CheckPortal,
   type CheckStatus,
   type PipelineStatus,
   type TeamMember,
@@ -65,7 +71,6 @@ export function CandidateDetailView({ member }: { member: TeamMember }) {
 
           {/* Stats strip */}
           <div className="grid grid-cols-2 divide-x divide-y divide-gray-100 lg:grid-cols-4 lg:divide-y-0">
-            {/* Progress */}
             <StatCard label="Progress">
               <div className="text-2xl font-bold text-brand-ink">{pct}%</div>
               <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
@@ -79,7 +84,6 @@ export function CandidateDetailView({ member }: { member: TeamMember }) {
               </div>
             </StatCard>
 
-            {/* Est. start */}
             <StatCard label="Est. start date">
               {estDate ? (
                 <>
@@ -97,7 +101,6 @@ export function CandidateDetailView({ member }: { member: TeamMember }) {
               )}
             </StatCard>
 
-            {/* Last activity */}
             <StatCard label="Last candidate activity">
               {member.lastCandidateActivity ? (
                 <>
@@ -113,7 +116,6 @@ export function CandidateDetailView({ member }: { member: TeamMember }) {
               )}
             </StatCard>
 
-            {/* Days since hired */}
             <StatCard label="Days since hired">
               <div
                 className={`text-2xl font-bold ${atLimit ? "text-rose-600" : "text-brand-ink"}`}
@@ -130,38 +132,40 @@ export function CandidateDetailView({ member }: { member: TeamMember }) {
           </div>
         </div>
 
-        {/* Compliance checks */}
-        <section>
-          <SectionLabel>Compliance checks</SectionLabel>
-          <div
-            className="grid gap-3"
-            style={{
-              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-            }}
-          >
-            {member.checks.map((c) => (
-              <CheckCard key={c.key} check={c} />
-            ))}
-          </div>
-        </section>
-
-        {/* Recent activity + Actions — side by side on large screens */}
+        {/* Main content — left column: checks + activity | right column: actions */}
         <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-          {/* Recent activity */}
-          <section>
-            <SectionLabel>Recent activity</SectionLabel>
-            <div className="rounded-xl border border-gray-200 bg-white">
-              {member.activityFeed && member.activityFeed.length > 0 ? (
-                <ActivityFeed events={member.activityFeed} />
-              ) : (
-                <div className="px-5 py-6 text-sm text-gray-400">
-                  No activity recorded yet.
-                </div>
-              )}
-            </div>
-          </section>
+          <div className="flex flex-col gap-5">
+            {/* Compliance checks */}
+            <section>
+              <SectionLabel>Compliance checks</SectionLabel>
+              <div
+                className="grid gap-3"
+                style={{
+                  gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                }}
+              >
+                {member.checks.map((c) => (
+                  <CheckCard key={c.key} check={c} />
+                ))}
+              </div>
+            </section>
 
-          {/* Actions */}
+            {/* Recent activity */}
+            <section>
+              <SectionLabel>Recent activity</SectionLabel>
+              <div className="rounded-xl border border-gray-200 bg-white">
+                {member.activityFeed && member.activityFeed.length > 0 ? (
+                  <ActivityFeed events={member.activityFeed} />
+                ) : (
+                  <div className="px-5 py-6 text-sm text-gray-400">
+                    No activity recorded yet.
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+
+          {/* Actions — top of right column */}
           <section>
             <SectionLabel>Actions</SectionLabel>
             <div className="flex flex-col gap-3">
@@ -191,32 +195,7 @@ export function CandidateDetailView({ member }: { member: TeamMember }) {
   );
 }
 
-/* ----------------------------- Sub-components ----------------------------- */
-
-function StatCard({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-0.5 px-5 py-4">
-      <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-gray-400">
-        {label}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
-      {children}
-    </div>
-  );
-}
+/* ----------------------------- Check card ----------------------------- */
 
 function CheckCard({ check }: { check: ComplianceCheck }) {
   const isOverdue = (check.overdueBy ?? 0) > 0;
@@ -227,15 +206,25 @@ function CheckCard({ check }: { check: ComplianceCheck }) {
         ? "border-[#FAC775]"
         : "border-gray-200";
 
+  const hasReference = !!check.reference;
+  const hasPortal = !!check.portal;
+  const hasDocuments = !!check.documents && check.documents.length > 0;
+  const hasContent = hasReference || hasPortal || hasDocuments;
+
   return (
-    <div className={`rounded-xl border bg-white p-4 ${borderCls}`}>
+    <div className={`flex min-h-44 flex-col rounded-xl border bg-white p-4 ${borderCls}`}>
+      {/* Header */}
       <div className="flex items-start justify-between gap-2">
-        <span className="text-xs font-medium text-brand-ink">{check.label}</span>
+        <span className="text-xs font-semibold text-brand-ink">{check.label}</span>
         <CheckStatusPill status={check.status} />
       </div>
+
+      {/* Description */}
       <p className="mt-1.5 text-xs leading-relaxed text-gray-500">{check.note}</p>
+
+      {/* Due date */}
       {check.dueDate && (
-        <div className="mt-2 text-[11px]">
+        <div className="mt-1.5 text-[11px]">
           <span className="text-gray-400">Due {check.dueDate}</span>
           {isOverdue && (
             <span className="ml-1.5 font-medium text-rose-500">
@@ -244,7 +233,132 @@ function CheckCard({ check }: { check: ComplianceCheck }) {
           )}
         </div>
       )}
+
+      {/* Reference / portal / documents */}
+      {hasContent && (
+        <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3">
+          {hasReference && (
+            <DetailRow label="Ref">
+              <ReferencePill value={check.reference!} />
+            </DetailRow>
+          )}
+          {hasPortal && (
+            <DetailRow label="Portal">
+              <PortalLink portal={check.portal!} />
+            </DetailRow>
+          )}
+          {hasDocuments && (
+            <DetailRow label="Docs">
+              <div className="flex flex-wrap gap-1.5">
+                {check.documents!.map((d) => (
+                  <DocumentChip key={d.filename} document={d} />
+                ))}
+              </div>
+            </DetailRow>
+          )}
+        </div>
+      )}
+
+      {!hasContent && check.unavailableNote && (
+        <p className="mt-2 text-[11px] italic text-gray-400">
+          {check.unavailableNote}
+        </p>
+      )}
     </div>
+  );
+}
+
+function DetailRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2">
+      <span className="w-10 shrink-0 pt-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-400">
+        {label}
+      </span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
+/* ----------------------------- Primitives ----------------------------- */
+
+function ReferencePill({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [copied]);
+
+  function handleCopy() {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(value).catch(() => {});
+    }
+    setCopied(true);
+  }
+
+  return (
+    <div className="inline-flex items-center gap-1.5">
+      <span className="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-0.5 font-mono text-[11px] text-brand-ink">
+        {value}
+      </span>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label={copied ? "Copied" : "Copy reference"}
+        className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium transition-colors ${
+          copied
+            ? "bg-emerald-50 text-emerald-600"
+            : "text-brand-primary hover:bg-primary-50"
+        }`}
+      >
+        {copied ? (
+          <>
+            <Check className="h-3 w-3" strokeWidth={2.5} />
+            Copied
+          </>
+        ) : (
+          <>
+            <Copy className="h-3 w-3" />
+            Copy
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
+
+function PortalLink({ portal }: { portal: CheckPortal }) {
+  return (
+    <a
+      href={portal.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 text-xs font-medium text-brand-primary hover:underline"
+    >
+      {portal.label}
+      <ArrowUpRight className="h-3 w-3" />
+    </a>
+  );
+}
+
+function DocumentChip({ document }: { document: CheckDocument }) {
+  return (
+    <a
+      href={document.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex max-w-full items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-brand-ink transition-colors hover:border-brand-primary hover:text-brand-primary"
+    >
+      <FileText className="h-3 w-3 shrink-0 text-gray-400" />
+      <span className="truncate">{document.filename}</span>
+    </a>
   );
 }
 
@@ -290,6 +404,8 @@ function CheckStatusPill({ status }: { status: CheckStatus }) {
   );
 }
 
+/* ----------------------------- Activity feed ----------------------------- */
+
 function ActivityFeed({ events }: { events: ActivityEvent[] }) {
   const dotColor: Record<ActivityEvent["type"], string> = {
     completed: "bg-emerald-400",
@@ -315,6 +431,8 @@ function ActivityFeed({ events }: { events: ActivityEvent[] }) {
     </ul>
   );
 }
+
+/* ----------------------------- Actions ----------------------------- */
 
 function ActionButton({
   variant,
@@ -356,6 +474,33 @@ function ActionButton({
         <div className="mt-0.5 text-xs text-gray-600">{description}</div>
       </div>
     </button>
+  );
+}
+
+/* ----------------------------- Shared ----------------------------- */
+
+function StatCard({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5 px-5 py-4">
+      <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-gray-400">
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+      {children}
+    </div>
   );
 }
 
