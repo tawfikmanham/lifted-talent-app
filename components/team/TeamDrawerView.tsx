@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ViewToggle } from "@/components/team/ViewToggle";
 import {
   AlertTriangle,
   Check,
@@ -18,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ViewToggle } from "@/components/team/ViewToggle";
 import {
   AGENCIES,
   TEAM_MEMBERS,
@@ -27,7 +27,6 @@ import {
   type CheckStatus,
   type Comment,
   type CommentAuthorRole,
-  type LatestUpdate,
   type PipelineStatus,
   type Responsibility,
   type TeamMember,
@@ -41,12 +40,12 @@ const PIPELINE_STATUS_OPTIONS = [
   "Signed Off",
 ] as const;
 
-export function TeamOverviewView() {
+export function TeamDrawerView() {
   const [activeTab, setActiveTab] = useState<TeamTab>("onboarding");
   const [search, setSearch] = useState("");
   const [pipelineStatus, setPipelineStatus] = useState<string>("All");
   const [agency, setAgency] = useState<string>("All");
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
 
   const visibleMembers = useMemo(() => {
@@ -63,8 +62,8 @@ export function TeamOverviewView() {
     });
   }, [activeTab, search, pipelineStatus, agency]);
 
-  const toggleOpen = (id: string) =>
-    setOpenId((current) => (current === id ? null : id));
+  const openMember = useCallback((m: TeamMember) => setSelectedMember(m), []);
+  const closeMember = useCallback(() => setSelectedMember(null), []);
 
   return (
     <div className="flex min-h-full flex-col">
@@ -74,7 +73,7 @@ export function TeamOverviewView() {
         description="View all of your current and prospective team members."
         actions={
           <div className="flex items-center gap-3">
-            <ViewToggle current="expanding" />
+            <ViewToggle current="drawer" />
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors duration-300 hover:bg-brand-primary-hover"
@@ -145,10 +144,9 @@ export function TeamOverviewView() {
 
         {/* Desktop / tablet table */}
         <div className="hidden overflow-x-auto rounded-xl border border-gray-300 bg-white md:block">
-          <table className="w-full min-w-[960px] border-collapse text-sm">
+          <table className="w-full min-w-[840px] border-collapse text-sm">
             <thead>
               <tr className="bg-gray-50 align-middle text-left text-xs font-normal text-gray-500">
-                <th className="w-10 px-3 py-3" aria-label="Expand row" />
                 <th className="px-4 py-3">Candidate</th>
                 <th className="px-4 py-3">
                   <span className="inline-flex items-center gap-1">
@@ -164,6 +162,7 @@ export function TeamOverviewView() {
                     <SortChevrons />
                   </span>
                 </th>
+                <th className="w-10 px-3 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -177,17 +176,14 @@ export function TeamOverviewView() {
                   </td>
                 </tr>
               ) : (
-                visibleMembers.map((m) => {
-                  const isOpen = openId === m.id;
-                  return (
-                    <RowGroup
-                      key={m.id}
-                      member={m}
-                      isOpen={isOpen}
-                      onToggle={() => toggleOpen(m.id)}
-                    />
-                  );
-                })
+                visibleMembers.map((m) => (
+                  <RowSimple
+                    key={m.id}
+                    member={m}
+                    isSelected={selectedMember?.id === m.id}
+                    onSelect={() => openMember(m)}
+                  />
+                ))
               )}
             </tbody>
           </table>
@@ -209,21 +205,21 @@ export function TeamOverviewView() {
             </div>
           ) : (
             <ul className="space-y-3">
-              {visibleMembers.map((m) => {
-                const isOpen = openId === m.id;
-                return (
-                  <MobileCard
-                    key={m.id}
-                    member={m}
-                    isOpen={isOpen}
-                    onToggle={() => toggleOpen(m.id)}
-                  />
-                );
-              })}
+              {visibleMembers.map((m) => (
+                <MobileDrawerCard
+                  key={m.id}
+                  member={m}
+                  isSelected={selectedMember?.id === m.id}
+                  onSelect={() => openMember(m)}
+                />
+              ))}
             </ul>
           )}
         </div>
       </div>
+
+      {/* Candidate detail drawer */}
+      <CandidateDrawer member={selectedMember} onClose={closeMember} />
 
       {/* Mobile filter drawer */}
       <MobileFilterDrawer
@@ -238,101 +234,88 @@ export function TeamOverviewView() {
   );
 }
 
-/* --------------------------------- Row --------------------------------- */
+/* -------------------------------- Row -------------------------------- */
 
-function RowGroup({
+function RowSimple({
   member,
-  isOpen,
-  onToggle,
+  isSelected,
+  onSelect,
 }: {
   member: TeamMember;
-  isOpen: boolean;
-  onToggle: () => void;
+  isSelected: boolean;
+  onSelect: () => void;
 }) {
-  const { done, total, pct } = progressFor(member);
+  const { done, total } = progressFor(member);
   return (
-    <>
-      <tr
-        onClick={onToggle}
-        className={`cursor-pointer align-middle transition-colors ${
-          isOpen
-            ? "border-t border-gray-300 bg-gray-50"
-            : "border-t border-gray-100 hover:bg-gray-50"
-        }`}
-      >
-        <td className="px-3 py-4 text-gray-400">
-          {isOpen ? (
-            <ChevronDown className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-        </td>
-        <td className="whitespace-nowrap px-4 py-4">
-          <div className="flex flex-col">
-            <a
-              href="#"
-              onClick={(e) => e.stopPropagation()}
-              className="font-medium text-brand-primary hover:underline"
-            >
-              {member.name}
-            </a>
-            <span className="text-xs text-muted">{member.role}</span>
-          </div>
-        </td>
-        <td className="px-4 py-4">
-          <StatusPill status={member.pipelineStatus} />
-        </td>
-        <td className="max-w-0 px-4 py-4">
-          <div className="flex flex-col gap-0.5">
-            <span className="truncate text-sm text-brand-ink">
-              {member.latestUpdate.sentence}
-            </span>
-            <ResponsibilityLabel owner={member.latestUpdate.owner} />
-          </div>
-        </td>
-        <td className="px-4 py-4">
-          <div className="flex justify-center">
-            <ProgressDonut done={done} total={total} />
-          </div>
-        </td>
-        <td className="whitespace-nowrap px-4 py-4">
-          <EstStartLabel value={member.estStart} />
-        </td>
-      </tr>
-      {isOpen && (
-        <tr className="bg-white">
-          <td colSpan={6} className="px-6 pb-6 pt-4">
-            <ExpandedDetail member={member} done={done} total={total} />
-          </td>
-        </tr>
-      )}
-    </>
+    <tr
+      onClick={onSelect}
+      className={`cursor-pointer align-middle transition-colors ${
+        isSelected
+          ? "border-l-2 border-l-brand-primary border-t border-t-gray-100 bg-primary-50"
+          : "border-t border-gray-100 hover:bg-gray-50"
+      }`}
+    >
+      <td className="whitespace-nowrap px-4 py-4">
+        <div className="flex flex-col">
+          <a
+            href="#"
+            onClick={(e) => e.stopPropagation()}
+            className="font-medium text-brand-primary hover:underline"
+          >
+            {member.name}
+          </a>
+          <span className="text-xs text-muted">{member.role}</span>
+        </div>
+      </td>
+      <td className="px-4 py-4">
+        <StatusPill status={member.pipelineStatus} />
+      </td>
+      <td className="max-w-0 px-4 py-4">
+        <div className="flex flex-col gap-0.5">
+          <span className="truncate text-sm text-brand-ink">
+            {member.latestUpdate.sentence}
+          </span>
+          <ResponsibilityLabel owner={member.latestUpdate.owner} />
+        </div>
+      </td>
+      <td className="px-4 py-4">
+        <div className="flex justify-center">
+          <ProgressDonut done={done} total={total} />
+        </div>
+      </td>
+      <td className="whitespace-nowrap px-4 py-4">
+        <EstStartLabel value={member.estStart} />
+      </td>
+      <td className="px-3 py-4 text-gray-400">
+        <ChevronRight className="h-4 w-4" />
+      </td>
+    </tr>
   );
 }
 
-/* ------------------------------ Mobile card ------------------------------ */
+/* ----------------------------- Mobile card ----------------------------- */
 
-function MobileCard({
+function MobileDrawerCard({
   member,
-  isOpen,
-  onToggle,
+  isSelected,
+  onSelect,
 }: {
   member: TeamMember;
-  isOpen: boolean;
-  onToggle: () => void;
+  isSelected: boolean;
+  onSelect: () => void;
 }) {
-  const { done, total, pct } = progressFor(member);
+  const { done, total } = progressFor(member);
   return (
     <li
       className={`overflow-hidden rounded-xl border bg-white transition-colors ${
-        isOpen ? "border-brand-primary" : "border-gray-300"
+        isSelected ? "border-brand-primary" : "border-gray-300"
       }`}
     >
       <button
         type="button"
-        onClick={onToggle}
+        onClick={onSelect}
         className={`flex w-full flex-col gap-3 p-4 text-left transition-colors ${
-          isOpen ? "bg-gray-50" : "active:bg-gray-50"
+          isSelected ? "bg-primary-50" : "active:bg-gray-50"
         }`}
       >
         <div className="flex items-start justify-between gap-3">
@@ -340,7 +323,10 @@ function MobileCard({
             <div className="font-medium text-brand-primary">{member.name}</div>
             <div className="text-xs text-muted">{member.role}</div>
           </div>
-          <StatusPill status={member.pipelineStatus} />
+          <div className="flex items-center gap-2">
+            <StatusPill status={member.pipelineStatus} />
+            <ChevronRight className="h-4 w-4 text-gray-400" />
+          </div>
         </div>
         <div className="flex flex-col gap-0.5">
           <span className="text-sm text-brand-ink">
@@ -353,73 +339,209 @@ function MobileCard({
           <EstStartLabel value={member.estStart} />
         </div>
       </button>
-      {isOpen && (
-        <div className="border-t border-gray-200 bg-white px-4 pb-4 pt-3">
-          <ExpandedDetail member={member} done={done} total={total} compact />
-        </div>
-      )}
     </li>
   );
 }
 
-/* --------------------------- Expanded detail --------------------------- */
+/* -------------------------- Candidate drawer -------------------------- */
 
-function ExpandedDetail({
+function CandidateDrawer({
   member,
-  done,
-  total,
-  compact = false,
+  onClose,
 }: {
-  member: TeamMember;
-  done: number;
-  total: number;
-  compact?: boolean;
+  member: TeamMember | null;
+  onClose: () => void;
 }) {
+  const isOpen = member !== null;
+
+  // Keep previous member while animating out
+  const [displayMember, setDisplayMember] = useState<TeamMember | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (member) {
+      setDisplayMember(member);
+      // Reset scroll to top whenever a new member opens
+      if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    } else {
+      const t = setTimeout(() => setDisplayMember(null), 300);
+      return () => clearTimeout(t);
+    }
+  }, [member]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen, onClose]);
+
+  // Lock body scroll while open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  const m = displayMember;
+  const { done, total } = m ? progressFor(m) : { done: 0, total: 0 };
+
   return (
-    <div className="flex flex-col gap-4">
+    <div
+      className={`fixed inset-0 z-50 transition-opacity duration-300 ${
+        isOpen ? "pointer-events-auto" : "pointer-events-none opacity-0"
+      }`}
+      aria-hidden={!isOpen}
+      role="dialog"
+      aria-modal="true"
+      aria-label={m ? `${m.name} details` : "Candidate details"}
+    >
+      {/* Backdrop */}
       <div
-        className={`grid gap-3 ${
-          compact
-            ? "grid-cols-2"
-            : "grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+        className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ${
+          isOpen ? "opacity-100" : "opacity-0"
         }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Panel — bottom sheet on mobile, side panel on md+ */}
+      <div
+        className={[
+          "absolute inset-x-0 bottom-0 h-[90dvh] overflow-hidden rounded-t-2xl bg-white shadow-2xl",
+          "md:inset-y-0 md:left-auto md:right-0 md:h-full md:w-[520px] md:rounded-none",
+          "transition-transform duration-300 ease-out",
+          isOpen
+            ? "translate-y-0 md:translate-x-0"
+            : "translate-y-full md:translate-y-0 md:translate-x-full",
+        ].join(" ")}
       >
-        {member.checks.map((c) => (
-          <ComplianceCard key={c.key} check={c} />
-        ))}
-      </div>
-      <div className="border-t border-gray-200 pt-5">
-        <div className="max-w-2xl rounded-lg border border-[#E5E5E5] bg-[#F9F9F9] p-4">
-          <CommentsThread initialComments={member.comments} />
-        </div>
+        {m && (
+          <div className="flex h-full flex-col">
+            {/* Mobile drag handle */}
+            <div className="flex justify-center pt-3 md:hidden">
+              <div className="h-1 w-10 rounded-full bg-gray-300" />
+            </div>
+
+            {/* Header — min-h matches PageHeader height so borders align */}
+            <div className="flex min-h-[88px] items-center justify-between gap-3 border-b border-gray-200 px-5 py-4">
+              <div className="min-w-0">
+                <h2 className="font-semibold text-brand-ink">{m.name}</h2>
+                <p className="text-sm text-muted">
+                  {m.role}
+                  <span className="mx-1.5 text-gray-300">·</span>
+                  {m.agency}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <StatusPill status={m.pipelineStatus} />
+                <ProgressDonut done={done} total={total} />
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="Close panel"
+                  className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-brand-ink"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable body — key resets scroll + child state on every new member */}
+            <div key={m.id} className="flex-1 overflow-y-auto">
+              <div className="flex flex-col gap-5 p-5">
+                {/* Latest update */}
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                  <p className="text-sm leading-relaxed text-brand-ink">
+                    {m.latestUpdate.sentence}
+                  </p>
+                  <div className="mt-3 flex items-center justify-between gap-2">
+                    <ResponsibilityLabel owner={m.latestUpdate.owner} />
+                    <span className="inline-flex items-center gap-1">
+                      <span className="text-xs font-medium text-brand-primary">Est. start:</span>
+                      {m.estStart.date ? (
+                        m.estStart.atRisk ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-500">
+                            <AlertTriangle className="h-3 w-3" />
+                            {m.estStart.date}
+                          </span>
+                        ) : (
+                          <span className="text-xs font-medium text-brand-ink">{m.estStart.date}</span>
+                        )
+                      ) : (
+                        <span className="text-xs font-medium text-brand-ink">Not set</span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Compliance checks */}
+                <div>
+                  <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Compliance checks
+                  </span>
+                  <div className="space-y-2">
+                    {m.checks.map((c) => (
+                      <DrawerComplianceRow key={c.key} check={c} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Comments */}
+                <div className="rounded-lg border border-[#E5E5E5] bg-[#F9F9F9] p-4">
+                  <DrawerCommentsThread initialComments={m.comments} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function ComplianceCard({ check }: { check: ComplianceCheck }) {
+/* -------------------- Drawer compliance row -------------------- */
+
+function DrawerComplianceRow({ check }: { check: ComplianceCheck }) {
   const blocked = check.status === "blocked";
   const cardCls = blocked ? "border-rose-200 bg-rose-50" : "border-gray-200 bg-white";
   const labelCls = "text-brand-ink";
   const noteCls = "text-muted";
 
   return (
-    <div className={`flex flex-col gap-1.5 rounded-lg border p-3 ${cardCls}`}>
-      <div className="flex items-center justify-between gap-2">
-        <span className={`text-xs font-medium ${labelCls}`}>{check.label}</span>
+    <div
+      className={`flex items-center justify-between gap-3 rounded-lg border p-3 ${cardCls}`}
+    >
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className={`text-xs font-medium ${labelCls}`}>
+          {check.label}
+        </span>
+        <span className={`text-xs leading-snug ${noteCls}`}>{check.note}</span>
+      </div>
+      <div className="shrink-0">
         <CheckStatusBadge status={check.status} />
       </div>
-      <div className={`text-xs leading-snug ${noteCls}`}>{check.note}</div>
     </div>
   );
 }
 
-/* --------------------------- Comments ----------------------------- */
+/* -------------------- Comments thread (uncapped) -------------------- */
 
-function CommentsThread({ initialComments }: { initialComments: Comment[] }) {
+function DrawerCommentsThread({
+  initialComments,
+}: {
+  initialComments: Comment[];
+}) {
   const [allComments, setAllComments] = useState<Comment[]>(initialComments);
   const [draft, setDraft] = useState("");
-
   function addComment(text: string) {
     setAllComments((prev) => [
       ...prev,
@@ -443,15 +565,12 @@ function CommentsThread({ initialComments }: { initialComments: Comment[] }) {
       {allComments.length === 0 && (
         <p className="mb-2 text-xs text-muted">No comments yet.</p>
       )}
-      <div className="relative">
-        <div className="max-h-[200px] space-y-2 overflow-y-auto pb-6 pr-1">
-          {allComments.map((c) => (
-            <CommentCard key={c.id} comment={c} />
-          ))}
-        </div>
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[#F9F9F9] to-transparent" />
+      <div className="space-y-2">
+        {allComments.map((c) => (
+          <DrawerCommentCard key={c.id} comment={c} />
+        ))}
       </div>
-      <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+      <div className="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5">
         <input
           type="text"
           value={draft}
@@ -460,7 +579,10 @@ function CommentsThread({ initialComments }: { initialComments: Comment[] }) {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               const text = draft.trim();
-              if (text) { addComment(text); setDraft(""); }
+              if (text) {
+                addComment(text);
+                setDraft("");
+              }
             }
           }}
           placeholder="Leave a comment…"
@@ -476,7 +598,13 @@ function CommentsThread({ initialComments }: { initialComments: Comment[] }) {
           </button>
           <button
             type="button"
-            onClick={() => { const text = draft.trim(); if (text) { addComment(text); setDraft(""); } }}
+            onClick={() => {
+              const text = draft.trim();
+              if (text) {
+                addComment(text);
+                setDraft("");
+              }
+            }}
             disabled={!draft.trim()}
             aria-label="Send comment"
             className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-primary text-white transition-colors hover:bg-brand-primary-hover disabled:opacity-30"
@@ -489,7 +617,7 @@ function CommentsThread({ initialComments }: { initialComments: Comment[] }) {
   );
 }
 
-function CommentCard({ comment }: { comment: Comment }) {
+function DrawerCommentCard({ comment }: { comment: Comment }) {
   const isTeam = comment.role === "team";
   const initials = comment.author
     .split(" ")
@@ -518,14 +646,12 @@ function CommentCard({ comment }: { comment: Comment }) {
         </span>
         <span className="text-xs text-gray-400">{comment.timestamp}</span>
       </div>
-      <p className="ml-8 text-sm leading-snug text-brand-ink">
-        {comment.text}
-      </p>
+      <p className="ml-8 text-sm leading-snug text-brand-ink">{comment.text}</p>
     </div>
   );
 }
 
-/* ----------------------------- Pieces ----------------------------- */
+/* ----------------------------- Shared UI ----------------------------- */
 
 function StatusPill({ status }: { status: PipelineStatus }) {
   const styles: Record<PipelineStatus, string> = {
@@ -545,21 +671,13 @@ function StatusPill({ status }: { status: PipelineStatus }) {
 
 function ResponsibilityLabel({ owner }: { owner: Responsibility }) {
   const map: Record<Responsibility, { label: string; cls: string }> = {
-    candidate: {
-      label: "Waiting on candidate",
-      cls: "text-amber-700",
-    },
-    external: {
-      label: "Waiting on external body",
-      cls: "text-sky-700",
-    },
+    candidate: { label: "Waiting on candidate", cls: "text-amber-700" },
+    external: { label: "Waiting on external body", cls: "text-sky-700" },
     lifted: { label: "With Lifted", cls: "text-brand-primary" },
     clear: { label: "All clear", cls: "text-emerald-700" },
   };
   const { label, cls } = map[owner];
-  return (
-    <span className={`text-xs font-medium ${cls}`}>{label}</span>
-  );
+  return <span className={`text-xs font-medium ${cls}`}>{label}</span>;
 }
 
 function CheckStatusBadge({ status }: { status: CheckStatus }) {
@@ -596,7 +714,6 @@ function EstStartLabel({
   value,
 }: {
   value: { date: string | null; atRisk: boolean };
-  inline?: boolean;
 }) {
   if (!value.date) {
     return <span className="text-sm text-gray-400">Not set</span>;
@@ -734,8 +851,6 @@ function SortChevrons() {
   );
 }
 
-/* ------------------------- Mobile filter drawer ------------------------- */
-
 function MobileFilterDrawer({
   open,
   onClose,
@@ -753,7 +868,7 @@ function MobileFilterDrawer({
 }) {
   return (
     <div
-      className={`fixed inset-0 z-50 transition ${
+      className={`fixed inset-0 z-40 transition ${
         open ? "pointer-events-auto" : "pointer-events-none"
       }`}
       aria-hidden={!open}
@@ -790,7 +905,7 @@ function MobileFilterDrawer({
           <FilterSelect
             label="Agency"
             value={agency}
-            options={[...AGENCIES]}
+            options={["All", ...AGENCIES]}
             onChange={setAgency}
           />
           <button

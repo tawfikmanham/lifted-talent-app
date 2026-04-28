@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ViewToggle } from "@/components/team/ViewToggle";
 import {
   AlertTriangle,
+  ArrowUpRight,
   Check,
   ChevronDown,
   ChevronRight,
   ChevronUp,
   Clock,
+  Copy,
+  FileText,
   Paperclip,
   RefreshCw,
   Search,
@@ -18,16 +20,18 @@ import {
   X,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ViewToggle } from "@/components/team/ViewToggle";
 import {
   AGENCIES,
   TEAM_MEMBERS,
   TEAM_TABS,
   progressFor,
   type Check as ComplianceCheck,
+  type CheckDocument,
+  type CheckPortal,
   type CheckStatus,
   type Comment,
   type CommentAuthorRole,
-  type LatestUpdate,
   type PipelineStatus,
   type Responsibility,
   type TeamMember,
@@ -41,7 +45,7 @@ const PIPELINE_STATUS_OPTIONS = [
   "Signed Off",
 ] as const;
 
-export function TeamOverviewView() {
+export function TeamSelfServeView() {
   const [activeTab, setActiveTab] = useState<TeamTab>("onboarding");
   const [search, setSearch] = useState("");
   const [pipelineStatus, setPipelineStatus] = useState<string>("All");
@@ -74,7 +78,7 @@ export function TeamOverviewView() {
         description="View all of your current and prospective team members."
         actions={
           <div className="flex items-center gap-3">
-            <ViewToggle current="expanding" />
+            <ViewToggle current="self-serve" />
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors duration-300 hover:bg-brand-primary-hover"
@@ -225,7 +229,6 @@ export function TeamOverviewView() {
         </div>
       </div>
 
-      {/* Mobile filter drawer */}
       <MobileFilterDrawer
         open={filterDrawerOpen}
         onClose={() => setFilterDrawerOpen(false)}
@@ -249,7 +252,7 @@ function RowGroup({
   isOpen: boolean;
   onToggle: () => void;
 }) {
-  const { done, total, pct } = progressFor(member);
+  const { done, total } = progressFor(member);
   return (
     <>
       <tr
@@ -302,7 +305,7 @@ function RowGroup({
       {isOpen && (
         <tr className="bg-white">
           <td colSpan={6} className="px-6 pb-6 pt-4">
-            <ExpandedDetail member={member} done={done} total={total} />
+            <ExpandedDetail member={member} />
           </td>
         </tr>
       )}
@@ -321,7 +324,7 @@ function MobileCard({
   isOpen: boolean;
   onToggle: () => void;
 }) {
-  const { done, total, pct } = progressFor(member);
+  const { done, total } = progressFor(member);
   return (
     <li
       className={`overflow-hidden rounded-xl border bg-white transition-colors ${
@@ -355,7 +358,7 @@ function MobileCard({
       </button>
       {isOpen && (
         <div className="border-t border-gray-200 bg-white px-4 pb-4 pt-3">
-          <ExpandedDetail member={member} done={done} total={total} compact />
+          <ExpandedDetail member={member} compact />
         </div>
       )}
     </li>
@@ -366,26 +369,22 @@ function MobileCard({
 
 function ExpandedDetail({
   member,
-  done,
-  total,
   compact = false,
 }: {
   member: TeamMember;
-  done: number;
-  total: number;
   compact?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-4">
       <div
-        className={`grid gap-3 ${
+        className={
           compact
-            ? "grid-cols-2"
-            : "grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
-        }`}
+            ? "flex flex-col gap-3"
+            : "grid gap-3 lg:grid-cols-2"
+        }
       >
         {member.checks.map((c) => (
-          <ComplianceCard key={c.key} check={c} />
+          <CheckDetailCard key={c.key} check={c} compact={compact} />
         ))}
       </div>
       <div className="border-t border-gray-200 pt-5">
@@ -397,24 +396,211 @@ function ExpandedDetail({
   );
 }
 
-function ComplianceCard({ check }: { check: ComplianceCheck }) {
+/* --------------------------- Check detail card --------------------------- */
+
+function CheckDetailCard({
+  check,
+  compact = false,
+}: {
+  check: ComplianceCheck;
+  compact?: boolean;
+}) {
   const blocked = check.status === "blocked";
-  const cardCls = blocked ? "border-rose-200 bg-rose-50" : "border-gray-200 bg-white";
-  const labelCls = "text-brand-ink";
-  const noteCls = "text-muted";
+  const cardCls = blocked
+    ? "border-rose-200 bg-rose-50"
+    : "border-gray-200 bg-white";
+
+  const hasReference = !!check.reference;
+  const hasPortal = !!check.portal;
+  const hasDocuments = !!check.documents && check.documents.length > 0;
+  const hasContent = hasReference || hasPortal || hasDocuments;
 
   return (
-    <div className={`flex flex-col gap-1.5 rounded-lg border p-3 ${cardCls}`}>
-      <div className="flex items-center justify-between gap-2">
-        <span className={`text-xs font-medium ${labelCls}`}>{check.label}</span>
-        <CheckStatusBadge status={check.status} />
+    <div className={`rounded-xl border p-4 ${cardCls}`}>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold text-brand-ink">
+          {check.label}
+        </span>
+        <CheckStatusPill status={check.status} />
       </div>
-      <div className={`text-xs leading-snug ${noteCls}`}>{check.note}</div>
+      {check.note && (
+        <p className="mt-1 text-xs text-muted">{check.note}</p>
+      )}
+
+      <div className="mt-3 flex flex-col gap-2">
+        {hasReference && (
+          <DetailRow label="Reference" compact={compact}>
+            <ReferencePill value={check.reference!} />
+          </DetailRow>
+        )}
+        {hasPortal && (
+          <DetailRow label="Portal" compact={compact}>
+            <PortalLink portal={check.portal!} />
+          </DetailRow>
+        )}
+        {hasDocuments && (
+          <DetailRow label="Documents" compact={compact}>
+            <div className="flex flex-wrap gap-2">
+              {check.documents!.map((d) => (
+                <DocumentChip key={d.filename} document={d} />
+              ))}
+            </div>
+          </DetailRow>
+        )}
+        {!hasContent && check.unavailableNote && (
+          <p className="text-xs italic text-muted">{check.unavailableNote}</p>
+        )}
+      </div>
     </div>
   );
 }
 
-/* --------------------------- Comments ----------------------------- */
+function DetailRow({
+  label,
+  children,
+  compact,
+}: {
+  label: string;
+  children: React.ReactNode;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={
+        compact
+          ? "flex flex-col gap-1"
+          : "flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"
+      }
+    >
+      <span
+        className={
+          compact
+            ? "text-[11px] font-medium uppercase tracking-wide text-gray-400"
+            : "shrink-0 text-[11px] font-medium uppercase tracking-wide text-gray-400 sm:w-20 sm:pt-1.5"
+        }
+      >
+        {label}
+      </span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
+/* ------------------------------ Primitives ------------------------------ */
+
+function ReferencePill({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [copied]);
+
+  function handleCopy() {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(value).catch(() => {});
+    }
+    setCopied(true);
+  }
+
+  return (
+    <div className="inline-flex items-center gap-2">
+      <span className="inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-[13px] text-brand-ink">
+        {value}
+      </span>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label={copied ? "Copied" : "Copy reference"}
+        className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+          copied
+            ? "bg-emerald-50 text-emerald-600"
+            : "text-brand-primary hover:bg-primary-50"
+        }`}
+      >
+        {copied ? (
+          <>
+            <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+            Copied
+          </>
+        ) : (
+          <>
+            <Copy className="h-3.5 w-3.5" />
+            Copy
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
+
+function PortalLink({ portal }: { portal: CheckPortal }) {
+  return (
+    <a
+      href={portal.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 text-sm font-medium text-brand-primary hover:underline"
+    >
+      {portal.label}
+      <ArrowUpRight className="h-3.5 w-3.5" />
+    </a>
+  );
+}
+
+function DocumentChip({ document }: { document: CheckDocument }) {
+  return (
+    <a
+      href={document.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-brand-ink transition-colors hover:border-brand-primary hover:text-brand-primary"
+    >
+      <FileText className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+      <span className="truncate">{document.filename}</span>
+    </a>
+  );
+}
+
+function CheckStatusPill({ status }: { status: CheckStatus }) {
+  const map: Record<
+    CheckStatus,
+    { icon: React.ReactNode; label: string; cls: string }
+  > = {
+    done: {
+      icon: <Check className="h-3.5 w-3.5" strokeWidth={2.5} />,
+      label: "Done",
+      cls: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    },
+    "in-progress": {
+      icon: <RefreshCw className="h-3.5 w-3.5" />,
+      label: "In progress",
+      cls: "bg-sky-50 text-sky-700 ring-sky-200",
+    },
+    waiting: {
+      icon: <Clock className="h-3.5 w-3.5" />,
+      label: "Waiting",
+      cls: "bg-amber-50 text-amber-700 ring-amber-200",
+    },
+    blocked: {
+      icon: <AlertTriangle className="h-3.5 w-3.5" />,
+      label: "Blocked",
+      cls: "bg-rose-100 text-rose-700 ring-rose-200",
+    },
+  };
+  const { icon, label, cls } = map[status];
+  return (
+    <span
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${cls}`}
+    >
+      {icon}
+      {label}
+    </span>
+  );
+}
+
+/* ------------------------------ Comments ------------------------------ */
 
 function CommentsThread({ initialComments }: { initialComments: Comment[] }) {
   const [allComments, setAllComments] = useState<Comment[]>(initialComments);
@@ -460,7 +646,10 @@ function CommentsThread({ initialComments }: { initialComments: Comment[] }) {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               const text = draft.trim();
-              if (text) { addComment(text); setDraft(""); }
+              if (text) {
+                addComment(text);
+                setDraft("");
+              }
             }
           }}
           placeholder="Leave a comment…"
@@ -476,7 +665,13 @@ function CommentsThread({ initialComments }: { initialComments: Comment[] }) {
           </button>
           <button
             type="button"
-            onClick={() => { const text = draft.trim(); if (text) { addComment(text); setDraft(""); } }}
+            onClick={() => {
+              const text = draft.trim();
+              if (text) {
+                addComment(text);
+                setDraft("");
+              }
+            }}
             disabled={!draft.trim()}
             aria-label="Send comment"
             className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-primary text-white transition-colors hover:bg-brand-primary-hover disabled:opacity-30"
@@ -518,14 +713,12 @@ function CommentCard({ comment }: { comment: Comment }) {
         </span>
         <span className="text-xs text-gray-400">{comment.timestamp}</span>
       </div>
-      <p className="ml-8 text-sm leading-snug text-brand-ink">
-        {comment.text}
-      </p>
+      <p className="ml-8 text-sm leading-snug text-brand-ink">{comment.text}</p>
     </div>
   );
 }
 
-/* ----------------------------- Pieces ----------------------------- */
+/* ----------------------------- Shared UI ----------------------------- */
 
 function StatusPill({ status }: { status: PipelineStatus }) {
   const styles: Record<PipelineStatus, string> = {
@@ -545,58 +738,19 @@ function StatusPill({ status }: { status: PipelineStatus }) {
 
 function ResponsibilityLabel({ owner }: { owner: Responsibility }) {
   const map: Record<Responsibility, { label: string; cls: string }> = {
-    candidate: {
-      label: "Waiting on candidate",
-      cls: "text-amber-700",
-    },
-    external: {
-      label: "Waiting on external body",
-      cls: "text-sky-700",
-    },
+    candidate: { label: "Waiting on candidate", cls: "text-amber-700" },
+    external: { label: "Waiting on external body", cls: "text-sky-700" },
     lifted: { label: "With Lifted", cls: "text-brand-primary" },
     clear: { label: "All clear", cls: "text-emerald-700" },
   };
   const { label, cls } = map[owner];
-  return (
-    <span className={`text-xs font-medium ${cls}`}>{label}</span>
-  );
-}
-
-function CheckStatusBadge({ status }: { status: CheckStatus }) {
-  const map: Record<CheckStatus, { icon: React.ReactNode; label: string }> = {
-    done: {
-      icon: <Check className="h-4 w-4 text-emerald-600" strokeWidth={2.5} />,
-      label: "Done",
-    },
-    "in-progress": {
-      icon: <RefreshCw className="h-4 w-4 text-sky-600" />,
-      label: "In progress",
-    },
-    waiting: {
-      icon: <Clock className="h-4 w-4 text-amber-600" />,
-      label: "Waiting",
-    },
-    blocked: {
-      icon: <AlertTriangle className="h-4 w-4 text-rose-600" />,
-      label: "Blocked",
-    },
-  };
-  const { icon, label } = map[status];
-  return (
-    <span className="group relative inline-flex items-center justify-center">
-      {icon}
-      <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
-        {label}
-      </span>
-    </span>
-  );
+  return <span className={`text-xs font-medium ${cls}`}>{label}</span>;
 }
 
 function EstStartLabel({
   value,
 }: {
   value: { date: string | null; atRisk: boolean };
-  inline?: boolean;
 }) {
   if (!value.date) {
     return <span className="text-sm text-gray-400">Not set</span>;
@@ -734,8 +888,6 @@ function SortChevrons() {
   );
 }
 
-/* ------------------------- Mobile filter drawer ------------------------- */
-
 function MobileFilterDrawer({
   open,
   onClose,
@@ -790,7 +942,7 @@ function MobileFilterDrawer({
           <FilterSelect
             label="Agency"
             value={agency}
-            options={[...AGENCIES]}
+            options={["All", ...AGENCIES]}
             onChange={setAgency}
           />
           <button
