@@ -10,7 +10,7 @@ export type CheckKey =
   | "vehicle"
   | "issues";
 
-export type CheckStatus = "done" | "in-progress" | "waiting" | "blocked";
+export type CheckStatus = "done" | "in-progress" | "waiting" | "blocked" | "not-required";
 
 export type CheckDocument = {
   filename: string;
@@ -31,6 +31,16 @@ export type Check = {
   portal?: CheckPortal;
   documents?: CheckDocument[];
   unavailableNote?: string;
+  dueDate?: string;
+  overdueBy?: number;
+};
+
+export type ActivityEventType = "completed" | "update" | "system";
+
+export type ActivityEvent = {
+  text: string;
+  timeAgo: string;
+  type: ActivityEventType;
 };
 
 export type PipelineStatus =
@@ -75,6 +85,10 @@ export type TeamMember = {
   checks: Check[];
   comments: Comment[];
   newMessages: number;
+  hiredDate?: string;
+  daysSinceHired?: number;
+  lastCandidateActivity?: { timeAgo: string; description: string };
+  activityFeed?: ActivityEvent[];
 };
 
 export const CHECK_LABELS: Record<CheckKey, string> = {
@@ -104,6 +118,8 @@ type CheckEntry = {
   portal?: CheckPortal;
   documents?: CheckDocument[];
   unavailableNote?: string;
+  dueDate?: string;
+  overdueBy?: number;
 };
 
 const buildChecks = (
@@ -120,6 +136,8 @@ const buildChecks = (
       portal: entry?.portal,
       documents: entry?.documents,
       unavailableNote: entry?.unavailableNote,
+      dueDate: entry?.dueDate,
+      overdueBy: entry?.overdueBy,
     };
   });
 };
@@ -134,69 +152,131 @@ export const TEAM_MEMBERS: TeamMember[] = [
     pipelineStatus: "Offer Made",
     tab: "onboarding",
     agency: "Abicare",
+    hiredDate: "7 Apr 2026",
+    daysSinceHired: 21,
+    lastCandidateActivity: {
+      timeAgo: "2 days ago",
+      description: "Submitted health declaration",
+    },
     latestUpdate: {
-      sentence: "Waiting on candidate; passport scan needed for ID verification.",
+      sentence: "Health declaration submitted. DBS and work history still outstanding.",
       owner: "candidate",
     },
-    estStart: { date: null, atRisk: false },
+    estStart: { date: "12 May 2026", atRisk: false },
     checks: buildChecks({
       idv: {
-        status: "waiting",
-        note: "Awaiting passport scan",
+        status: "done",
+        note: "Verified. Completed 8 Apr.",
         portal: CHECK_PORTALS.idv,
+        documents: [doc("idv_report_kelly_gaffney.pdf")],
       },
       dbs: {
-        status: "waiting",
-        note: "Not started",
+        status: "in-progress",
+        note: "Application submitted — awaiting result",
+        reference: "E009876KG5432",
         portal: CHECK_PORTALS.dbs,
-        unavailableNote: "Reference not yet available — check not started",
+        dueDate: "21 Apr 2026",
+        overdueBy: 6,
       },
       rtw: {
-        status: "blocked",
-        note: "Share code expired",
+        status: "done",
+        note: "Verified. Completed 9 Apr.",
         portal: CHECK_PORTALS.rtw,
+        documents: [doc("passport_scan_kelly_gaffney.pdf")],
       },
       history: {
-        status: "in-progress",
-        note: "1 of 3 employers contacted",
-        documents: [doc("employment_history_kelly_gaffney.pdf")],
+        status: "waiting",
+        note: "Waiting on candidate to submit employment records",
+        dueDate: "14 Apr 2026",
+        overdueBy: 13,
       },
-      refs: { status: "waiting", note: "Refs requested from candidate" },
-      health: {
+      refs: {
         status: "in-progress",
-        note: "Form sent",
+        note: "1 of 2 references received",
+        dueDate: "19 Apr 2026",
+        documents: [doc("reference_letter_kelly_gaffney_1.pdf")],
+      },
+      health: {
+        status: "done",
+        note: "Cleared. Completed 25 Apr.",
         reference: "HLTH-FA-20260412",
+        documents: [doc("signed_health_declaration_kelly_gaffney.pdf")],
       },
       visa: {
-        status: "done",
-        note: "British citizen, N/A",
+        status: "waiting",
+        note: "Pending verification",
+        dueDate: "30 Apr 2026",
         unavailableNote: "Not required for this candidate",
       },
-      housing: { status: "done", note: "Confirmed" },
-      vehicle: { status: "blocked", note: "No driving licence on file" },
-      issues: { status: "blocked", note: "6 outstanding items" },
+      housing: {
+        status: "done",
+        note: "Confirmed. Completed 8 Apr.",
+      },
+      vehicle: {
+        status: "not-required",
+        note: "Not applicable for this role",
+        unavailableNote: "Not required for this role",
+      },
+      issues: {
+        status: "blocked",
+        note: "Minor query raised. Lifted ops reviewing.",
+      },
     }),
+    activityFeed: [
+      {
+        text: "Health declaration submitted by candidate",
+        timeAgo: "2 days ago",
+        type: "completed",
+      },
+      {
+        text: "Reference 1 received. Still awaiting reference 2.",
+        timeAgo: "4 days ago",
+        type: "update",
+      },
+      {
+        text: "DBS application submitted to external body",
+        timeAgo: "6 days ago",
+        type: "update",
+      },
+      {
+        text: "Candidate nudged via app to complete work history",
+        timeAgo: "8 days ago",
+        type: "system",
+      },
+      {
+        text: "Right to work verified. Passport and BRP confirmed.",
+        timeAgo: "19 days ago",
+        type: "completed",
+      },
+    ],
     comments: [
       {
         id: "kg-1",
         author: "Nina Lawson",
         role: "team",
-        timestamp: "3 days ago",
-        text: "Hi Kelly, we still need your passport scan to complete ID verification. Could you upload it via the portal?",
+        timestamp: "6 days ago",
+        text: "Hi Kelly, your DBS application has been submitted. We'll update you as soon as the result comes back.",
       },
       {
         id: "kg-2",
         author: "Kelly Gaffney",
         role: "candidate",
-        timestamp: "2 days ago",
-        text: "Sorry for the delay — I've been away. I'll get it uploaded tonight.",
+        timestamp: "5 days ago",
+        text: "Thanks for the update. Roughly how long does the DBS usually take?",
       },
       {
         id: "kg-3",
         author: "Nina Lawson",
         role: "team",
-        timestamp: "1 day ago",
-        text: "No problem at all. Just flag when it's done and we'll pick it up straight away.",
+        timestamp: "5 days ago",
+        text: "Usually 2–5 working days. We'll be in touch the moment we hear back. Could you also send over your work history documents when you get a chance?",
+      },
+      {
+        id: "kg-4",
+        author: "Kelly Gaffney",
+        role: "candidate",
+        timestamp: "2 days ago",
+        text: "Of course — I'll get those across today. Also just submitted the health declaration form.",
       },
     ],
     newMessages: 1,

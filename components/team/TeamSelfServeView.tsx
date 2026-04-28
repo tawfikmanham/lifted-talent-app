@@ -272,13 +272,13 @@ function RowGroup({
         </td>
         <td className="whitespace-nowrap px-4 py-4">
           <div className="flex flex-col">
-            <a
-              href="#"
+            <Link
+              href={`/team/${member.id}`}
               onClick={(e) => e.stopPropagation()}
               className="font-medium text-brand-primary hover:underline"
             >
               {member.name}
-            </a>
+            </Link>
             <span className="text-xs text-muted">{member.role}</span>
           </div>
         </td>
@@ -340,7 +340,13 @@ function MobileCard({
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="font-medium text-brand-primary">{member.name}</div>
+            <Link
+              href={`/team/${member.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="font-medium text-brand-primary hover:underline"
+            >
+              {member.name}
+            </Link>
             <div className="text-xs text-muted">{member.role}</div>
           </div>
           <StatusPill status={member.pipelineStatus} />
@@ -587,6 +593,11 @@ function CheckStatusPill({ status }: { status: CheckStatus }) {
       icon: <AlertTriangle className="h-3.5 w-3.5" />,
       label: "Blocked",
       cls: "bg-rose-100 text-rose-700 ring-rose-200",
+    },
+    "not-required": {
+      icon: null,
+      label: "Not required",
+      cls: "bg-gray-100 text-gray-500 ring-gray-200",
     },
   };
   const { icon, label, cls } = map[status];
