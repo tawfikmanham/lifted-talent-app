@@ -580,6 +580,10 @@ function CheckStatusBadge({ status }: { status: CheckStatus }) {
       icon: <AlertTriangle className="h-4 w-4 text-rose-600" />,
       label: "Blocked",
     },
+    "not-required": {
+      icon: <span className="h-4 w-4 rounded-full bg-gray-300 inline-block" />,
+      label: "Not required",
+    },
   };
   const { icon, label } = map[status];
   return (
