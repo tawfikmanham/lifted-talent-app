@@ -12,11 +12,25 @@ export type CheckKey =
 
 export type CheckStatus = "done" | "in-progress" | "waiting" | "blocked";
 
+export type CheckDocument = {
+  filename: string;
+  url: string;
+};
+
+export type CheckPortal = {
+  label: string;
+  url: string;
+};
+
 export type Check = {
   key: CheckKey;
   label: string;
   status: CheckStatus;
   note: string;
+  reference?: string;
+  portal?: CheckPortal;
+  documents?: CheckDocument[];
+  unavailableNote?: string;
 };
 
 export type PipelineStatus =
@@ -76,8 +90,24 @@ export const CHECK_LABELS: Record<CheckKey, string> = {
   issues: "Issues",
 };
 
+export const CHECK_PORTALS = {
+  idv: { label: "Yoti portal", url: "https://yoti.com" },
+  dbs: { label: "DBS update service", url: "https://www.gov.uk/dbs-update-service" },
+  rtw: { label: "UKVI right-to-work check", url: "https://www.gov.uk/view-right-to-work" },
+  visa: { label: "UKVI immigration status", url: "https://www.gov.uk/check-immigration-status" },
+} as const;
+
+type CheckEntry = {
+  status: CheckStatus;
+  note: string;
+  reference?: string;
+  portal?: CheckPortal;
+  documents?: CheckDocument[];
+  unavailableNote?: string;
+};
+
 const buildChecks = (
-  partial: Partial<Record<CheckKey, { status: CheckStatus; note: string }>>,
+  partial: Partial<Record<CheckKey, CheckEntry>>,
 ): Check[] => {
   return (Object.keys(CHECK_LABELS) as CheckKey[]).map((key) => {
     const entry = partial[key];
@@ -86,9 +116,15 @@ const buildChecks = (
       label: CHECK_LABELS[key],
       status: entry?.status ?? "waiting",
       note: entry?.note ?? "Not started",
+      reference: entry?.reference,
+      portal: entry?.portal,
+      documents: entry?.documents,
+      unavailableNote: entry?.unavailableNote,
     };
   });
 };
+
+const doc = (filename: string): CheckDocument => ({ filename, url: "#" });
 
 export const TEAM_MEMBERS: TeamMember[] = [
   {
@@ -104,13 +140,38 @@ export const TEAM_MEMBERS: TeamMember[] = [
     },
     estStart: { date: null, atRisk: false },
     checks: buildChecks({
-      idv: { status: "waiting", note: "Awaiting passport scan" },
-      dbs: { status: "waiting", note: "Not started" },
-      rtw: { status: "blocked", note: "Share code expired" },
-      history: { status: "in-progress", note: "1 of 3 employers contacted" },
+      idv: {
+        status: "waiting",
+        note: "Awaiting passport scan",
+        portal: CHECK_PORTALS.idv,
+      },
+      dbs: {
+        status: "waiting",
+        note: "Not started",
+        portal: CHECK_PORTALS.dbs,
+        unavailableNote: "Reference not yet available — check not started",
+      },
+      rtw: {
+        status: "blocked",
+        note: "Share code expired",
+        portal: CHECK_PORTALS.rtw,
+      },
+      history: {
+        status: "in-progress",
+        note: "1 of 3 employers contacted",
+        documents: [doc("employment_history_kelly_gaffney.pdf")],
+      },
       refs: { status: "waiting", note: "Refs requested from candidate" },
-      health: { status: "in-progress", note: "Form sent" },
-      visa: { status: "done", note: "British citizen, N/A" },
+      health: {
+        status: "in-progress",
+        note: "Form sent",
+        reference: "HLTH-FA-20260412",
+      },
+      visa: {
+        status: "done",
+        note: "British citizen, N/A",
+        unavailableNote: "Not required for this candidate",
+      },
       housing: { status: "done", note: "Confirmed" },
       vehicle: { status: "blocked", note: "No driving licence on file" },
       issues: { status: "blocked", note: "6 outstanding items" },
@@ -153,13 +214,51 @@ export const TEAM_MEMBERS: TeamMember[] = [
     },
     estStart: { date: "2 May 2026", atRisk: false },
     checks: buildChecks({
-      idv: { status: "done", note: "Verified" },
-      dbs: { status: "in-progress", note: "Submitted; awaiting result" },
-      rtw: { status: "done", note: "Verified" },
-      history: { status: "done", note: "3 of 3 employers verified" },
-      refs: { status: "in-progress", note: "1 of 2 received" },
-      health: { status: "done", note: "Cleared" },
-      visa: { status: "done", note: "British citizen, N/A" },
+      idv: {
+        status: "done",
+        note: "Verified",
+        portal: CHECK_PORTALS.idv,
+        documents: [doc("idv_report_marcus_williams.pdf")],
+      },
+      dbs: {
+        status: "in-progress",
+        note: "Submitted; awaiting result",
+        reference: "E001234567890",
+        portal: CHECK_PORTALS.dbs,
+      },
+      rtw: {
+        status: "done",
+        note: "Verified",
+        portal: CHECK_PORTALS.rtw,
+        documents: [
+          doc("share_code_confirmation_marcus_williams.pdf"),
+          doc("passport_scan_marcus_williams.pdf"),
+        ],
+      },
+      history: {
+        status: "done",
+        note: "3 of 3 employers verified",
+        documents: [
+          doc("employment_history_marcus_williams.pdf"),
+          doc("p45_marcus_williams.pdf"),
+        ],
+      },
+      refs: {
+        status: "in-progress",
+        note: "1 of 2 received",
+        documents: [doc("reference_letter_jane_smith.pdf")],
+      },
+      health: {
+        status: "done",
+        note: "Cleared",
+        reference: "HLTH-FA-20260326",
+        documents: [doc("signed_health_declaration_marcus_williams.pdf")],
+      },
+      visa: {
+        status: "done",
+        note: "British citizen, N/A",
+        unavailableNote: "Not required for this candidate",
+      },
       housing: { status: "done", note: "Confirmed" },
       vehicle: { status: "done", note: "Licence verified" },
       issues: { status: "waiting", note: "No issues" },
@@ -202,13 +301,54 @@ export const TEAM_MEMBERS: TeamMember[] = [
     },
     estStart: { date: "28 Apr 2026", atRisk: false },
     checks: buildChecks({
-      idv: { status: "done", note: "Verified" },
-      dbs: { status: "done", note: "Cleared" },
-      rtw: { status: "done", note: "Verified" },
-      history: { status: "done", note: "5 of 5 employers verified" },
-      refs: { status: "in-progress", note: "Verifying with Lifted" },
-      health: { status: "done", note: "Cleared" },
-      visa: { status: "done", note: "ILR confirmed" },
+      idv: {
+        status: "done",
+        note: "Verified",
+        portal: CHECK_PORTALS.idv,
+        documents: [doc("idv_report_aisha_patel.pdf")],
+      },
+      dbs: {
+        status: "done",
+        note: "Cleared",
+        reference: "E002345678901",
+        portal: CHECK_PORTALS.dbs,
+        documents: [doc("dbs_certificate_aisha_patel.pdf")],
+      },
+      rtw: {
+        status: "done",
+        note: "Verified",
+        portal: CHECK_PORTALS.rtw,
+        documents: [doc("share_code_confirmation_aisha_patel.pdf")],
+      },
+      history: {
+        status: "done",
+        note: "5 of 5 employers verified",
+        documents: [
+          doc("employment_history_aisha_patel.pdf"),
+          doc("p45_aisha_patel.pdf"),
+        ],
+      },
+      refs: {
+        status: "in-progress",
+        note: "Verifying with Lifted",
+        documents: [
+          doc("reference_letter_dr_okafor.pdf"),
+          doc("reference_letter_helen_briggs.pdf"),
+        ],
+      },
+      health: {
+        status: "done",
+        note: "Cleared",
+        reference: "HLTH-FA-20260308",
+        documents: [doc("signed_health_declaration_aisha_patel.pdf")],
+      },
+      visa: {
+        status: "done",
+        note: "ILR confirmed",
+        reference: "GWF-2024-08812",
+        portal: CHECK_PORTALS.visa,
+        documents: [doc("brp_card_aisha_patel.pdf")],
+      },
       housing: { status: "done", note: "Confirmed" },
       vehicle: { status: "done", note: "Licence verified" },
       issues: { status: "waiting", note: "No issues" },
@@ -244,13 +384,55 @@ export const TEAM_MEMBERS: TeamMember[] = [
     },
     estStart: { date: "1 May 2026", atRisk: false },
     checks: buildChecks({
-      idv: { status: "done", note: "Verified" },
-      dbs: { status: "done", note: "Cleared" },
-      rtw: { status: "done", note: "Verified" },
-      history: { status: "done", note: "4 of 4 employers verified" },
-      refs: { status: "done", note: "2 of 2 received" },
-      health: { status: "done", note: "Cleared" },
-      visa: { status: "done", note: "British citizen, N/A" },
+      idv: {
+        status: "done",
+        note: "Verified",
+        portal: CHECK_PORTALS.idv,
+        documents: [doc("idv_report_tom_edwards.pdf")],
+      },
+      dbs: {
+        status: "done",
+        note: "Cleared",
+        reference: "E003456789012",
+        portal: CHECK_PORTALS.dbs,
+        documents: [doc("dbs_certificate_tom_edwards.pdf")],
+      },
+      rtw: {
+        status: "done",
+        note: "Verified",
+        portal: CHECK_PORTALS.rtw,
+        documents: [
+          doc("share_code_confirmation_tom_edwards.pdf"),
+          doc("passport_scan_tom_edwards.pdf"),
+        ],
+      },
+      history: {
+        status: "done",
+        note: "4 of 4 employers verified",
+        documents: [
+          doc("employment_history_tom_edwards.pdf"),
+          doc("p45_tom_edwards.pdf"),
+        ],
+      },
+      refs: {
+        status: "done",
+        note: "2 of 2 received",
+        documents: [
+          doc("reference_letter_george_morton.pdf"),
+          doc("reference_letter_amanda_pierce.pdf"),
+        ],
+      },
+      health: {
+        status: "done",
+        note: "Cleared",
+        reference: "HLTH-FA-20260219",
+        documents: [doc("signed_health_declaration_tom_edwards.pdf")],
+      },
+      visa: {
+        status: "done",
+        note: "British citizen, N/A",
+        unavailableNote: "Not required for this candidate",
+      },
       housing: { status: "done", note: "Confirmed" },
       vehicle: { status: "done", note: "Licence verified" },
       issues: { status: "done", note: "None" },
@@ -286,13 +468,49 @@ export const TEAM_MEMBERS: TeamMember[] = [
     },
     estStart: { date: "10 May 2026", atRisk: true },
     checks: buildChecks({
-      idv: { status: "done", note: "Verified" },
-      dbs: { status: "in-progress", note: "Submitted" },
-      rtw: { status: "done", note: "Verified" },
-      history: { status: "done", note: "3 of 3 employers verified" },
-      refs: { status: "in-progress", note: "1 of 2 received" },
-      health: { status: "waiting", note: "Form sent; awaiting response" },
-      visa: { status: "done", note: "EU settled status" },
+      idv: {
+        status: "done",
+        note: "Verified",
+        portal: CHECK_PORTALS.idv,
+        documents: [doc("idv_report_sofia_costa.pdf")],
+      },
+      dbs: {
+        status: "in-progress",
+        note: "Submitted",
+        reference: "E004567890123",
+        portal: CHECK_PORTALS.dbs,
+      },
+      rtw: {
+        status: "done",
+        note: "Verified",
+        portal: CHECK_PORTALS.rtw,
+        documents: [
+          doc("share_code_confirmation_sofia_costa.pdf"),
+          doc("passport_scan_sofia_costa.pdf"),
+        ],
+      },
+      history: {
+        status: "done",
+        note: "3 of 3 employers verified",
+        documents: [doc("employment_history_sofia_costa.pdf")],
+      },
+      refs: {
+        status: "in-progress",
+        note: "1 of 2 received",
+        documents: [doc("reference_letter_marco_rossi.pdf")],
+      },
+      health: {
+        status: "waiting",
+        note: "Form sent; awaiting response",
+        unavailableNote: "Waiting on candidate to submit documents",
+      },
+      visa: {
+        status: "done",
+        note: "EU settled status",
+        reference: "GWF-2025-04221",
+        portal: CHECK_PORTALS.visa,
+        documents: [doc("settled_status_letter_sofia_costa.pdf")],
+      },
       housing: { status: "done", note: "Confirmed" },
       vehicle: { status: "blocked", note: "MOT expired" },
       issues: { status: "in-progress", note: "1 outstanding" },
@@ -342,13 +560,43 @@ export const TEAM_MEMBERS: TeamMember[] = [
     },
     estStart: { date: null, atRisk: false },
     checks: buildChecks({
-      idv: { status: "in-progress", note: "Submitted to provider" },
-      dbs: { status: "waiting", note: "Not started" },
-      rtw: { status: "waiting", note: "Not started" },
-      history: { status: "waiting", note: "Not started" },
-      refs: { status: "waiting", note: "Not started" },
-      health: { status: "waiting", note: "Not started" },
-      visa: { status: "done", note: "British citizen, N/A" },
+      idv: {
+        status: "in-progress",
+        note: "Submitted to provider",
+        portal: CHECK_PORTALS.idv,
+      },
+      dbs: {
+        status: "waiting",
+        note: "Not started",
+        portal: CHECK_PORTALS.dbs,
+        unavailableNote: "Reference not yet available — check not started",
+      },
+      rtw: {
+        status: "waiting",
+        note: "Not started",
+        portal: CHECK_PORTALS.rtw,
+        unavailableNote: "Waiting on candidate to submit documents",
+      },
+      history: {
+        status: "waiting",
+        note: "Not started",
+        unavailableNote: "Waiting on candidate to submit documents",
+      },
+      refs: {
+        status: "waiting",
+        note: "Not started",
+        unavailableNote: "Waiting on candidate to submit documents",
+      },
+      health: {
+        status: "waiting",
+        note: "Not started",
+        unavailableNote: "Reference not yet available — check not started",
+      },
+      visa: {
+        status: "done",
+        note: "British citizen, N/A",
+        unavailableNote: "Not required for this candidate",
+      },
       housing: { status: "waiting", note: "Not confirmed" },
       vehicle: { status: "waiting", note: "Not confirmed" },
       issues: { status: "waiting", note: "No issues" },
@@ -377,13 +625,50 @@ export const TEAM_MEMBERS: TeamMember[] = [
     },
     estStart: { date: "15 May 2026", atRisk: true },
     checks: buildChecks({
-      idv: { status: "done", note: "Verified" },
-      dbs: { status: "done", note: "Cleared" },
-      rtw: { status: "blocked", note: "Share code expired" },
-      history: { status: "in-progress", note: "2 of 4 employers verified" },
-      refs: { status: "in-progress", note: "1 of 2 received" },
-      health: { status: "done", note: "Cleared" },
-      visa: { status: "done", note: "Skilled worker visa verified" },
+      idv: {
+        status: "done",
+        note: "Verified",
+        portal: CHECK_PORTALS.idv,
+        documents: [doc("idv_report_priya_shah.pdf")],
+      },
+      dbs: {
+        status: "done",
+        note: "Cleared",
+        reference: "E005678901234",
+        portal: CHECK_PORTALS.dbs,
+        documents: [doc("dbs_certificate_priya_shah.pdf")],
+      },
+      rtw: {
+        status: "blocked",
+        note: "Share code expired",
+        portal: CHECK_PORTALS.rtw,
+      },
+      history: {
+        status: "in-progress",
+        note: "2 of 4 employers verified",
+        documents: [doc("employment_history_priya_shah.pdf")],
+      },
+      refs: {
+        status: "in-progress",
+        note: "1 of 2 received",
+        documents: [doc("reference_letter_dr_kapoor.pdf")],
+      },
+      health: {
+        status: "done",
+        note: "Cleared",
+        reference: "HLTH-FA-20260315",
+        documents: [doc("signed_health_declaration_priya_shah.pdf")],
+      },
+      visa: {
+        status: "done",
+        note: "Skilled worker visa verified",
+        reference: "GWF-2025-09144",
+        portal: CHECK_PORTALS.visa,
+        documents: [
+          doc("visa_copy_priya_shah.pdf"),
+          doc("brp_card_priya_shah.pdf"),
+        ],
+      },
       housing: { status: "done", note: "Confirmed" },
       vehicle: { status: "done", note: "Licence verified" },
       issues: { status: "blocked", note: "1 outstanding" },
@@ -426,13 +711,55 @@ export const TEAM_MEMBERS: TeamMember[] = [
     },
     estStart: { date: "5 May 2026", atRisk: false },
     checks: buildChecks({
-      idv: { status: "done", note: "Verified" },
-      dbs: { status: "done", note: "Cleared" },
-      rtw: { status: "done", note: "Verified" },
-      history: { status: "done", note: "4 of 4 employers verified" },
-      refs: { status: "in-progress", note: "Final review with Lifted" },
-      health: { status: "done", note: "Cleared" },
-      visa: { status: "done", note: "British citizen, N/A" },
+      idv: {
+        status: "done",
+        note: "Verified",
+        portal: CHECK_PORTALS.idv,
+        documents: [doc("idv_report_daniel_reyes.pdf")],
+      },
+      dbs: {
+        status: "done",
+        note: "Cleared",
+        reference: "E006789012345",
+        portal: CHECK_PORTALS.dbs,
+        documents: [doc("dbs_certificate_daniel_reyes.pdf")],
+      },
+      rtw: {
+        status: "done",
+        note: "Verified",
+        portal: CHECK_PORTALS.rtw,
+        documents: [
+          doc("share_code_confirmation_daniel_reyes.pdf"),
+          doc("passport_scan_daniel_reyes.pdf"),
+        ],
+      },
+      history: {
+        status: "done",
+        note: "4 of 4 employers verified",
+        documents: [
+          doc("employment_history_daniel_reyes.pdf"),
+          doc("p45_daniel_reyes.pdf"),
+        ],
+      },
+      refs: {
+        status: "in-progress",
+        note: "Final review with Lifted",
+        documents: [
+          doc("reference_letter_paul_jenkins.pdf"),
+          doc("reference_letter_olivia_chen.pdf"),
+        ],
+      },
+      health: {
+        status: "done",
+        note: "Cleared",
+        reference: "HLTH-FA-20260402",
+        documents: [doc("signed_health_declaration_daniel_reyes.pdf")],
+      },
+      visa: {
+        status: "done",
+        note: "British citizen, N/A",
+        unavailableNote: "Not required for this candidate",
+      },
       housing: { status: "done", note: "Confirmed" },
       vehicle: { status: "done", note: "Licence verified" },
       issues: { status: "waiting", note: "No issues" },
@@ -468,13 +795,45 @@ export const TEAM_MEMBERS: TeamMember[] = [
     },
     estStart: { date: null, atRisk: false },
     checks: buildChecks({
-      idv: { status: "waiting", note: "Not started" },
-      dbs: { status: "waiting", note: "Not started" },
-      rtw: { status: "waiting", note: "Not started" },
-      history: { status: "waiting", note: "Not started" },
-      refs: { status: "waiting", note: "Not started" },
-      health: { status: "waiting", note: "Not started" },
-      visa: { status: "waiting", note: "Not confirmed" },
+      idv: {
+        status: "waiting",
+        note: "Not started",
+        portal: CHECK_PORTALS.idv,
+        unavailableNote: "Waiting on candidate to submit documents",
+      },
+      dbs: {
+        status: "waiting",
+        note: "Not started",
+        portal: CHECK_PORTALS.dbs,
+        unavailableNote: "Reference not yet available — check not started",
+      },
+      rtw: {
+        status: "waiting",
+        note: "Not started",
+        portal: CHECK_PORTALS.rtw,
+        unavailableNote: "Waiting on candidate to submit documents",
+      },
+      history: {
+        status: "waiting",
+        note: "Not started",
+        unavailableNote: "Waiting on candidate to submit documents",
+      },
+      refs: {
+        status: "waiting",
+        note: "Not started",
+        unavailableNote: "Waiting on candidate to submit documents",
+      },
+      health: {
+        status: "waiting",
+        note: "Not started",
+        unavailableNote: "Reference not yet available — check not started",
+      },
+      visa: {
+        status: "waiting",
+        note: "Not confirmed",
+        portal: CHECK_PORTALS.visa,
+        unavailableNote: "Reference not yet available — check not started",
+      },
       housing: { status: "waiting", note: "Not confirmed" },
       vehicle: { status: "waiting", note: "Not confirmed" },
       issues: { status: "in-progress", note: "Awaiting signed offer" },
@@ -510,13 +869,52 @@ export const TEAM_MEMBERS: TeamMember[] = [
     },
     estStart: { date: "20 May 2026", atRisk: false },
     checks: buildChecks({
-      idv: { status: "done", note: "Verified" },
-      dbs: { status: "done", note: "Cleared" },
-      rtw: { status: "in-progress", note: "Awaiting visa confirmation" },
-      history: { status: "done", note: "3 of 3 employers verified" },
-      refs: { status: "done", note: "2 of 2 received" },
-      health: { status: "done", note: "Cleared" },
-      visa: { status: "in-progress", note: "Under review by Home Office" },
+      idv: {
+        status: "done",
+        note: "Verified",
+        portal: CHECK_PORTALS.idv,
+        documents: [doc("idv_report_nathaniel_asare.pdf")],
+      },
+      dbs: {
+        status: "done",
+        note: "Cleared",
+        reference: "E007890123456",
+        portal: CHECK_PORTALS.dbs,
+        documents: [doc("dbs_certificate_nathaniel_asare.pdf")],
+      },
+      rtw: {
+        status: "in-progress",
+        note: "Awaiting visa confirmation",
+        portal: CHECK_PORTALS.rtw,
+      },
+      history: {
+        status: "done",
+        note: "3 of 3 employers verified",
+        documents: [
+          doc("employment_history_nathaniel_asare.pdf"),
+          doc("p45_nathaniel_asare.pdf"),
+        ],
+      },
+      refs: {
+        status: "done",
+        note: "2 of 2 received",
+        documents: [
+          doc("reference_letter_kofi_mensah.pdf"),
+          doc("reference_letter_sarah_mwangi.pdf"),
+        ],
+      },
+      health: {
+        status: "done",
+        note: "Cleared",
+        reference: "HLTH-FA-20260318",
+        documents: [doc("signed_health_declaration_nathaniel_asare.pdf")],
+      },
+      visa: {
+        status: "in-progress",
+        note: "Under review by Home Office",
+        reference: "GWF-2026-00812",
+        portal: CHECK_PORTALS.visa,
+      },
       housing: { status: "done", note: "Confirmed" },
       vehicle: { status: "done", note: "Licence verified" },
       issues: { status: "waiting", note: "No issues" },

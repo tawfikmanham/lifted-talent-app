@@ -1,11 +1,12 @@
 import Link from "next/link";
 
-export type ViewId = "original" | "expanding" | "drawer";
+export type ViewId = "original" | "expanding" | "drawer" | "self-serve";
 
 const VIEWS: Array<{ id: ViewId; label: string; href: string }> = [
   { id: "original", label: "Original", href: "/team/legacy" },
   { id: "expanding", label: "Expanding card", href: "/team" },
   { id: "drawer", label: "Side drawer", href: "/team/drawer" },
+  { id: "self-serve", label: "Self-serve", href: "/team/self-serve" },
 ];
 
 export function ViewToggle({ current }: { current: ViewId }) {
